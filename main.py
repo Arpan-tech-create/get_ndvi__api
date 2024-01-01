@@ -186,3 +186,291 @@ def process_file_route():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>GET NDVI</title>
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <h1>NDVI Temporal Profile Download Tool<br>
+  Upload a GeoJSON or ZIP or KML File that contains polygons of Interest</h1>
+<center>
+  <form id="uploadForm" enctype="multipart/form-data">
+    <label for="file" class="custom-file-upload1">Select File From Computer</label>
+    <input type="file" name="file" id="file" accept=".zip,.geojson,.kml">
+    <br>
+
+  </form>
+  
+  <div id="datasetContainer" style="display:none;">
+    
+    <div id="uploadMsg" class="upload-msg"></div>    
+    <a href="/ndvi_profile_generator" class="file-forma-link" style="
+    margin-left: 70%;
+    margin-top: 30px;
+">Choose File Format</a>
+    <br/>
+    <label for="dataset">Select Dataset:</label>
+    <select id="dataset" name="dataset">
+      <option value="sentinel">Sentinel</option>
+
+    </select>
+
+    <br/><br/> 
+  
+    <button type="button" id="submitDatasetBtn" class="submit-btn">Submit</button>
+  </div>
+
+  <div id="processingContainer" style="display:none;">
+    <p id="processingMsg"></p>
+    <a id="downloadBtn" style="display:none;">Download Data</a>
+  </div>
+  </center>
+
+  <script src="{{url_for('static',filename='js/custom1.js')}}"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+var abortController = new AbortController();
+
+document.getElementById('file').addEventListener('change', function () {
+
+  abortController.abort();
+  abortController = new AbortController();
+
+  var file = this.files[0];
+  var fileType = file.name.split('.').pop().toLowerCase();
+
+  var validExtensions = ['zip', 'geojson', 'kml'];
+
+  if (!validExtensions.includes(fileType)) {
+    showErrorMsg('Invalid File Format');
+    return;
+  }
+
+  document.getElementById('uploadMsg').innerHTML = 'Uploaded: ' + file.name;
+  document.getElementById('uploadForm').style.display = 'none';
+  document.getElementById('datasetContainer').style.display = 'block';
+  document.getElementById('processingContainer').style.display = 'none';
+});
+
+document.getElementById('submitDatasetBtn').addEventListener('click', function () {
+  document.getElementById('datasetContainer').style.display = 'none';
+  document.getElementById('processingContainer').style.display = 'block';
+  document.getElementById('processingMsg').innerHTML = 'Processing File...';
+
+  var file = document.getElementById('file').files[0];
+  var dataset = document.getElementById('dataset').value;
+  var formData = new FormData();
+  formData.append('file', file);
+  formData.append('dataset', dataset);
+  var url = '/process_file';
+
+  fetch(url, {
+    method: 'POST',
+    body: formData,
+    signal: abortController.signal,
+  })
+    .then((response) => {
+      if (response.ok) {
+        return response.blob();
+      } else {
+        return response.text().then((message) => {
+          throw new Error(message);
+        });
+      }
+    })
+    .then((blob) => {
+      var downloadBtn = document.getElementById('downloadBtn');
+      var url = window.URL.createObjectURL(blob);
+      downloadBtn.style.display = 'block';
+      downloadBtn.href = url;
+      downloadBtn.download = 'output.csv';
+      document.getElementById('processingMsg').innerHTML = 'Process Completed';
+    })
+    .catch((error) => {
+      if (error.name === 'AbortError') {
+       
+        document.getElementById('processingMsg').innerHTML = 'File processing was aborted.';
+      } else {
+     
+        console.error('Error:', error);
+        document.getElementById('processingMsg').innerHTML = 'There was an error occurred during file processing.';
+      }
+    });
+});
+
+
+
+function showErrorMsg(msg) {
+  var uploadMsg = document.getElementById('uploadMsg');
+  uploadMsg.innerHTML = msg;
+  uploadMsg.style.color = 'red';
+}
+
+
+window.addEventListener('beforeunload', function () {
+  abortController.abort();
+});
+
+
+
+
+
+
+body {
+  font-family: 'Arial', sans-serif;
+  background-color: #f7f7f7;
+  margin: 0;
+  padding: 0;
+}
+
+h1, h3 {
+  text-align: center;
+  color: #3498db;
+  margin-top: 5%;
+  margin-bottom: 20px;
+  padding: 20px;
+}
+
+form, #datasetContainer, #processingContainer {
+  max-width: 600px;
+  margin: 20px auto;
+  background: #ffffff;
+  padding: 30px;
+  margin-top: 40px;
+  border-radius: 10px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+}
+
+.custom-file-upload, #submitDatasetBtn {
+  display: inline-block;
+  padding: 15px 25px;
+  cursor: pointer;
+  background-color: #3498db;
+  color: #ffffff;
+  border: none;
+  border-radius: 5px;
+  transition: background-color 0.3s ease;
+}
+
+.custom-file-upload:hover, #submitDatasetBtn:hover {
+  background-color: #2980b9;
+}
+
+#file {
+  display: none;
+}
+
+label[for="file"], label[for="dataset"] {
+  margin-right: 10px;
+  cursor: pointer;
+  color: #333;
+}
+
+#dataset, #columnName {
+  width: calc(100% - 20px);
+  padding: 12px;
+  margin-top: 15px;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.upload-msg, #processingMsg {
+  margin-top: 15px;
+  color: #333;
+  margin-left: 10px;
+}
+
+.submit-btn {
+  background-color: #2ecc71;
+  color: #ffffff;
+  padding: 15px 25px;
+  border: none;
+  border-radius: 5px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.submit-btn:hover {
+  background-color: #27ae60;
+}
+
+#downloadBtn {
+  display: none;
+  color: #3498db;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+#downloadBtn:hover {
+  text-decoration: underline;
+}
+
+
+
+.custom-file-upload1 {
+  background-color: rgb(240, 180, 180);
+  display: inline-block;
+  padding: 15px 15px;
+  cursor: pointer;
+  font-weight: bold;
+  color: #e6214f;
+  border: none;
+  border-radius: 5px;
+  transition: background-color 0.3s ease;
+}
